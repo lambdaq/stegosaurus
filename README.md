@@ -242,6 +242,8 @@ Using ```dis``` with Python < 3.6 shows:
     14 BINARY_SUBTRACT      
     15 RETURN_VALUE
     
+    # :( no easy bytes to embed a payload
+    
 However with Python 3.6:
 
     0  LOAD_FAST                0 (n)
@@ -252,6 +254,8 @@ However with Python 3.6:
     10 LOAD_CONST               2 (3)
     12 BINARY_SUBTRACT
     14 RETURN_VALUE
+    
+    # :) easy bytes to embed a payload
     
 Passing ```-vv``` to Stegosaurus we can see how the payload is embedded in these dead zones:
 
@@ -284,6 +288,9 @@ more dead zone identification as mentioned in the TODOs.
 * Find more dead zones within the bytecode to place the payload, such as dead code
 * Prevent placing the payload in long runs of opcodes that do not take an argument 
   as this can lead to exposure of the payload through tools like ```strings```
+* Add a ```-g``` option which will grow the size of the file to supported larger payloads 
+  for users that are not concerned with a change in file size (for instance if Stegosaurus 
+  is injected into a build pipeline)
 
 #### Contact
 
