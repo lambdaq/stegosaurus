@@ -207,11 +207,11 @@ within the bytecode. A dead zone is defined as any byte which if changed will no
 behavior of the Python script. Python 3.6 introduced easy to exploit dead zones. Stepping back 
 though, a little history to set the stage.
 
-Python's reference interpreter, CPython was two types of opcodes - those with arguments and 
+Python's reference interpreter, CPython has two types of opcodes - those with arguments and 
 those without. In Python <= 3.5 instructions in the bytecode occupied either 1 or 3 bytes, 
 depending on if the opcode took an arugment or not. In Python 3.6 this was changed so that 
 all instructions occupy two bytes. Those without arguments simply set the second byte to zero 
-and is ignored during execution. This means that for each instruction in the bytecode that 
+and it is ignored during execution. This means that for each instruction in the bytecode that 
 does not take an arugment, Stegosaurus can safely insert one byte of the payload.
 
 Some examples of opcodes that do not take an argument:
