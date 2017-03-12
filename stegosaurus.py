@@ -12,11 +12,13 @@ import types
 if sys.version_info < (3, 6):
     sys.exit("Stegosaurus requires Python 3.6 or later")
 
+
 class MutableBytecode():
     def __init__(self, code):
         self.originalCode = code
         self.bytes = bytearray(code.co_code)
         self.consts = [MutableBytecode(const) if isinstance(const, types.CodeType) else const for const in code.co_consts]
+
 
 def _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger=None):
     for mutableBytecode in reversed(mutableBytecodeStack):
@@ -36,6 +38,7 @@ def _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger=None):
                     continue
                 yield (bytes, i + 1)
 
+
 def _createMutableBytecodeStack(mutableBytecode):
     def _stack(parent, stack):
         stack.append(parent)
@@ -47,6 +50,7 @@ def _createMutableBytecodeStack(mutableBytecode):
 
     return _stack(mutableBytecode, [])
 
+
 def _dumpBytecode(header, code, carrier, logger):
     try:
         f = open(carrier, "wb")
@@ -55,6 +59,7 @@ def _dumpBytecode(header, code, carrier, logger):
         logger.info("Wrote carrier file as %s", carrier)
     finally:
         f.close()
+
 
 def _embedPayload(mutableBytecodeStack, payload, explodeAfter, logger):
     payloadBytes = bytearray(payload, "utf8")
@@ -70,18 +75,20 @@ def _embedPayload(mutableBytecodeStack, payload, explodeAfter, logger):
 
     print("Payload embedded in carrier")
 
+
 def _extractPayload(mutableBytecodeStack, explodeAfter, logger):
     payloadBytes = bytearray()
 
     for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter):
         byte = bytes[byteIndex]
         if byte == 0:
-            break;
+            break
         payloadBytes.append(byte)
 
     payload = str(payloadBytes, "utf8")
 
     print("Extracted payload: {}".format(payload))
+
 
 def _getCarrierFile(args, logger):
     carrier = args.carrier
@@ -92,6 +99,7 @@ def _getCarrierFile(args, logger):
         logger.info("Compiled %s as %s for use as carrier", args.carrier, carrier)
 
     return carrier
+
 
 def _initLogger(args):
     handler = logging.StreamHandler()
@@ -108,6 +116,7 @@ def _initLogger(args):
 
     return logger
 
+
 def _loadBytecode(carrier, logger):
     try:
         f = open(carrier, "rb")
@@ -119,9 +128,11 @@ def _loadBytecode(carrier, logger):
 
     return (header, code)
 
+
 def _logBytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger):
     for bytes, i in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger):
         logger.debug("%s (%d)", opcode.opname[bytes[i - 1]], bytes[i])
+
 
 def _maxSupportedPayloadSize(mutableBytecodeStack, explodeAfter, logger):
     maxPayloadSize = 0
@@ -132,6 +143,7 @@ def _maxSupportedPayloadSize(mutableBytecodeStack, explodeAfter, logger):
     logger.info("Found %d bytes available for payload", maxPayloadSize)
 
     return maxPayloadSize
+
 
 def _parseArgs():
     argParser = argparse.ArgumentParser()
@@ -145,6 +157,7 @@ def _parseArgs():
     args = argParser.parse_args()
 
     return args
+
 
 def _toCodeType(mutableBytecode):
     return types.CodeType(
@@ -164,6 +177,7 @@ def _toCodeType(mutableBytecode):
         mutableBytecode.originalCode.co_freevars,
         mutableBytecode.originalCode.co_cellvars
         )
+
 
 def _validateArgs(args, logger):
     def _exit(msg):
@@ -191,6 +205,7 @@ def _validateArgs(args, logger):
         _exit("Values for -e must be positive integers")
 
     logger.debug("Validated args")
+
 
 def main():
     args = _parseArgs()
@@ -230,6 +245,7 @@ def main():
     code = _toCodeType(mutableBytecode)
 
     _dumpBytecode(header, code, carrier, logger)
+
 
 if __name__ == "__main__":
     main()
