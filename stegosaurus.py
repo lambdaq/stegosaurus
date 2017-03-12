@@ -70,7 +70,7 @@ def _embedPayload(mutableBytecodeStack, payload, explodeAfter, logger):
 
     print("Payload embedded in carrier")
 
-def _extractPayload(mutableBytecodeStack, logger):
+def _extractPayload(mutableBytecodeStack, explodeAfter, logger):
     payloadBytes = bytearray()
 
     for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter):
@@ -206,7 +206,7 @@ def main():
     _logBytesAvailableForPayload(mutableBytecodeStack, args.explode, logger)
 
     if args.extract:
-        _extractPayload(mutableBytecodeStack, logger)
+        _extractPayload(mutableBytecodeStack, args.explode, logger)
         return
 
     maxPayloadSize = _maxSupportedPayloadSize(mutableBytecodeStack, args.explode, logger)
