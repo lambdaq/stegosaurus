@@ -286,11 +286,16 @@ more dead zone identification as mentioned in the TODOs.
 * Support method to distribute payload across multiple carrier files
 * Provide ```-t``` flag to test if a payload may be present within a carrier file
 * Find more dead zones within the bytecode to place the payload, such as dead code
-* Prevent placing the payload in long runs of opcodes that do not take an argument 
-  as this can lead to exposure of the payload through tools like ```strings```
 * Add a ```-g``` option which will grow the size of the file to supported larger payloads 
   for users that are not concerned with a change in file size (for instance if Stegosaurus 
   is injected into a build pipeline)
+  
+#### Contributions
+
+Thanks to S0lll0s for:
+
+* Prevent placing the payload in long runs of opcodes that do not take an argument 
+  as this can lead to exposure of the payload through tools like ```strings```
 
 #### Contact
 
