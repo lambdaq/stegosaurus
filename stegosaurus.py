@@ -5,6 +5,8 @@ import opcode
 import os
 import py_compile
 import sys
+import math
+import string
 import types
 
 if sys.version_info < (3, 6):
@@ -16,11 +18,22 @@ class MutableBytecode():
         self.bytes = bytearray(code.co_code)
         self.consts = [MutableBytecode(const) if isinstance(const, types.CodeType) else const for const in code.co_consts]
 
-def _bytesAvailableForPayload(mutableBytecodeStack):
+def _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger=None):
     for mutableBytecode in reversed(mutableBytecodeStack):
         bytes = mutableBytecode.bytes
-        for i in range(0, len(bytes), 2):
-            if bytes[i] < opcode.HAVE_ARGUMENT:
+        consecutivePrintableBytes = 0
+        for i in range(0, len(bytes)):
+            if chr(bytes[i]) in string.printable:
+                consecutivePrintableBytes += 1
+            else:
+                consecutivePrintableBytes = 0
+
+            if i % 2 == 0 and bytes[i] < opcode.HAVE_ARGUMENT:
+                if consecutivePrintableBytes >= explodeAfter:
+                    if logger:
+                        logger.debug("Skipping available byte to terminate string leak")
+                    consecutivePrintableBytes = 0
+                    continue
                 yield (bytes, i + 1)
 
 def _createMutableBytecodeStack(mutableBytecode):
@@ -43,12 +56,12 @@ def _dumpBytecode(header, code, carrier, logger):
     finally:
         f.close()
 
-def _embedPayload(mutableBytecodeStack, payload, logger):
+def _embedPayload(mutableBytecodeStack, payload, explodeAfter, logger):
     payloadBytes = bytearray(payload, "utf8")
     payloadIndex = 0
     payloadLen = len(payloadBytes)
 
-    for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack):
+    for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter):
         if payloadIndex < payloadLen:
             bytes[byteIndex] = payloadBytes[payloadIndex]
             payloadIndex += 1
@@ -60,7 +73,7 @@ def _embedPayload(mutableBytecodeStack, payload, logger):
 def _extractPayload(mutableBytecodeStack, logger):
     payloadBytes = bytearray()
 
-    for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack):
+    for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter):
         byte = bytes[byteIndex]
         if byte == 0:
             break;
@@ -106,14 +119,14 @@ def _loadBytecode(carrier, logger):
 
     return (header, code)
 
-def _logBytesAvailableForPayload(mutableBytecodeStack, logger):
-    for bytes, i in _bytesAvailableForPayload(mutableBytecodeStack):
+def _logBytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger):
+    for bytes, i in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter, logger):
         logger.debug("%s (%d)", opcode.opname[bytes[i - 1]], bytes[i])
 
-def _maxSupportedPayloadSize(mutableBytecodeStack, logger):
+def _maxSupportedPayloadSize(mutableBytecodeStack, explodeAfter, logger):
     maxPayloadSize = 0
 
-    for bytes, i in _bytesAvailableForPayload(mutableBytecodeStack):
+    for bytes, i in _bytesAvailableForPayload(mutableBytecodeStack, explodeAfter):
         maxPayloadSize += 1
 
     logger.info("Found %d bytes available for payload", maxPayloadSize)
@@ -128,6 +141,7 @@ def _parseArgs():
     argParser.add_argument("-s", "--side-by-side", action="store_true", help="Do not overwrite carrier file, install side by side instead.")
     argParser.add_argument("-v", "--verbose", action="count", help="Increase verbosity once per use")
     argParser.add_argument("-x", "--extract", action="store_true", help="Extract payload from carrier file")
+    argParser.add_argument("-e", "--explode", type=int, default=math.inf, help="Explode payload into groups of a limited length if necessary")
     args = argParser.parse_args()
 
     return args
@@ -173,6 +187,9 @@ def _validateArgs(args, logger):
         if args.side_by_side:
             logger.warn("Side by side is ignored when -x or -r is specified")
 
+    if args.explode and args.explode < 1:
+        _exit("Values for -e must be positive integers")
+
     logger.debug("Validated args")
 
 def main():
@@ -186,13 +203,13 @@ def main():
 
     mutableBytecode = MutableBytecode(code)
     mutableBytecodeStack = _createMutableBytecodeStack(mutableBytecode)
-    _logBytesAvailableForPayload(mutableBytecodeStack, logger)
+    _logBytesAvailableForPayload(mutableBytecodeStack, args.explode, logger)
 
     if args.extract:
         _extractPayload(mutableBytecodeStack, logger)
         return
 
-    maxPayloadSize = _maxSupportedPayloadSize(mutableBytecodeStack, logger)
+    maxPayloadSize = _maxSupportedPayloadSize(mutableBytecodeStack, args.explode, logger)
 
     if args.report:
         print("Carrier can support a payload of {} bytes".format(maxPayloadSize))
@@ -202,8 +219,8 @@ def main():
     if payloadLen > maxPayloadSize:
         sys.exit("Carrier can only support a payload of {} bytes, payload of {} bytes received".format(maxPayloadSize, payloadLen))
 
-    _embedPayload(mutableBytecodeStack, args.payload, logger)
-    _logBytesAvailableForPayload(mutableBytecodeStack, logger)
+    _embedPayload(mutableBytecodeStack, args.payload, args.explode, logger)
+    _logBytesAvailableForPayload(mutableBytecodeStack, args.explode, logger)
 
     if args.side_by_side:
         logger.debug("Creating new carrier file name for side-by-side install")
