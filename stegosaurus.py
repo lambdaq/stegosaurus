@@ -26,7 +26,7 @@ def _bytesAvailableForPayload(mutableBytecodeStack):
 def _createMutableBytecodeStack(mutableBytecode):
     def _stack(parent, stack):
         stack.append(parent)
-        
+
         for child in [const for const in parent.consts if isinstance(const, MutableBytecode)]:
             _stack(child, stack)
 
@@ -47,7 +47,7 @@ def _embedPayload(mutableBytecodeStack, payload, logger):
     payloadBytes = bytearray(payload, "utf8")
     payloadIndex = 0
     payloadLen = len(payloadBytes)
-    
+
     for bytes, byteIndex in _bytesAvailableForPayload(mutableBytecodeStack):
         if payloadIndex < payloadLen:
             bytes[byteIndex] = payloadBytes[payloadIndex]
@@ -134,8 +134,8 @@ def _parseArgs():
 
 def _toCodeType(mutableBytecode):
     return types.CodeType(
-        mutableBytecode.originalCode.co_argcount, 
-        mutableBytecode.originalCode.co_kwonlyargcount, 
+        mutableBytecode.originalCode.co_argcount,
+        mutableBytecode.originalCode.co_kwonlyargcount,
         mutableBytecode.originalCode.co_nlocals,
         mutableBytecode.originalCode.co_stacksize,
         mutableBytecode.originalCode.co_flags,
